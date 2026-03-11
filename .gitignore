@@ -29,3 +29,5 @@ thumbs.db            # Windows system files
 # === Operating System / WSL ===
 ehthumbs.db
 Icon?
+.env
+.env
