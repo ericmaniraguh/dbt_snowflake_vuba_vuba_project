@@ -1,0 +1,31 @@
+# === dbt Specific ===
+target/              # Compiled SQL and run results (auto-generated)
+dbt_packages/        # Installed packages (re-installed via 'dbt deps')
+logs/                # Local run logs
+dbt_modules/         # Legacy name for dbt_packages
+
+# === Security & Credentials ===
+.env                 # YOUR SNOWFLAKE PASSWORDS (CRITICAL)
+*.pem                # Snowflake Private Keys (if using Key Pair auth)
+auth.json            # Occasional cloud provider auth files
+secrets.yml          # Any other local secret files
+
+# === Python & Virtual Environments ===
+.venv/               # Your local virtual environment
+venv/
+__pycache__/         # Compiled Python bytecode
+*.py[cod]
+*$py.class
+.pytest_cache/       # If you run python tests
+.ipynb_checkpoints/  # If you use Jupyter Notebooks for data analysis
+
+# === IDE & System Files ===
+.vscode/             # VS Code project settings (optional to ignore)
+.idea/               # PyCharm/IntelliJ settings
+.DS_Store            # macOS system files
+thumbs.db            # Windows system files
+*.swp                # Vim swap files
+
+# === Operating System / WSL ===
+ehthumbs.db
+Icon?

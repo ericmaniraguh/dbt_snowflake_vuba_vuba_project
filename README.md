@@ -225,4 +225,3 @@ Kigali, Rwanda
 
 ---
 
-# dbt_project_snoflake
