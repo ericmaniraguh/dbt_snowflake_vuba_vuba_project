@@ -1,96 +1,207 @@
----
 
-# dbt Data Pipeline: PostgreSQL → Snowflake
+
+# Vuba Vuba Analytics Data Pipeline (dbt + Snowflake)
 
 ## 1. Project Overview
 
-This project demonstrates a modern data engineering workflow using **dbt** to transform data stored in **Snowflake**, while ingesting data from **PostgreSQL** as the operational source system.
+This project implements a **modern analytics engineering pipeline** using **dbt (Data Build Tool)** to transform raw operational data from the **Vuba Vuba delivery platform** into analytics-ready datasets in **Snowflake**.
 
-**Architecture:**
+The pipeline organizes raw delivery data (customers, orders, shops, and order items) into a structured **analytics warehouse** for reporting, dashboards, and business insights.
+
+### Architecture
 
 ```
-PostgreSQL (Operational Database)
-           ↓
-     Snowflake (Data Warehouse)
-           ↓
-    dbt Transformations
-           ↓
-      Analytics Models
+Operational Data (PostgreSQL / Source Systems)
+                ↓
+        Snowflake Raw Tables
+                ↓
+           dbt Staging
+                ↓
+        dbt Intermediate Models
+                ↓
+          dbt Mart Models
+                ↓
+        Analytics & Dashboards
 ```
 
-This setup ensures scalable, secure, and maintainable data transformations, separating operational workloads from analytics workloads.
+This layered architecture ensures:
+
+* Clean and reusable transformations
+* Reliable analytics datasets
+* Clear data lineage
+* Scalable data pipelines
 
 ---
 
-## 2. Technologies Used
+# 2. Technologies Used
 
-* **dbt (Data Build Tool)** – SQL-based transformation framework
-* **Snowflake** – Cloud data warehouse for analytics and transformations
-* **PostgreSQL** – Operational database serving as the raw data source
-* **Python Virtual Environment (.venv)** – Dependency management
-* **dotenv** – For loading environment variables securely
+| Technology                             | Purpose                            |
+| -------------------------------------- | ---------------------------------- |
+| **dbt (Data Build Tool)**              | SQL-based transformation framework |
+| **Snowflake**                          | Cloud data warehouse               |
+| **PostgreSQL**                         | Operational source database        |
+| **Python Virtual Environment (.venv)** | Dependency isolation               |
+| **dotenv (.env)**                      | Secure credential management       |
+| **Git**                                | Version control                    |
 
 ---
 
-## 3. Project Structure
+# 3. Project Structure
+
+Your project follows the **recommended dbt modeling structure**.
 
 ```
-dbt_demo/
+dbt_core_project
 │
-├── .venv/                     # Python virtual environment
+├── models
+│   │
+│   ├── staging/vuba
+│   │   ├── stg_vuba__customers.sql
+│   │   ├── stg_vuba__orders.sql
+│   │   ├── stg_vuba__order_items.sql
+│   │   └── stg_vuba__shops.sql
+│   │
+│   ├── intermediate
+│   │   ├── int_vuba__order_totals.sql
+│   │   └── int_vuba__orders_with_customer_shop.sql
+│   │
+│   ├── marts
+│   │   ├── dim_customers.sql
+│   │   ├── fct_orders.sql
+│   │   └── fct_shop_revenue.sql
+│   │
+│   └── _vuba_sources.yml
 │
-└── dbt_project_demo/
-    ├── README.md
-    ├── dbt_project.yml       # Main dbt configuration
-    ├── models/               # SQL transformation models
-    ├── seeds/                # Static CSV datasets
-    ├── snapshots/            # Slowly changing dimension tracking
-    ├── tests/                # Data quality tests
-    ├── macros/               # Reusable SQL functions
-    └── analyses/             # Analytical queries
+├── macros
+├── seeds
+├── snapshots
+├── target
+├── logs
+└── dbt_project.yml
+```
+
+### Layer Responsibilities
+
+#### Staging Layer
+
+Cleans and standardizes raw data.
+
+Examples:
+
+* `stg_vuba__customers`
+* `stg_vuba__orders`
+* `stg_vuba__shops`
+
+Typical transformations:
+
+* rename columns
+* enforce consistent formats
+* remove duplicates
+
+---
+
+#### Intermediate Layer
+
+Applies business logic and combines staging models.
+
+Examples:
+
+* `int_vuba__order_totals`
+* `int_vuba__orders_with_customer_shop`
+
+This layer creates reusable transformations for downstream models.
+
+---
+
+#### Mart Layer
+
+Creates **analytics-ready tables** used by dashboards.
+
+Examples:
+
+* `dim_customers`
+* `fct_orders`
+* `fct_shop_revenue`
+
+These tables follow a **dimensional modeling approach**:
+
+* **Fact tables** → events (orders, revenue)
+* **Dimension tables** → descriptive attributes (customers)
+
+---
+
+# 4. Source Data Definition
+
+Raw tables are defined in `_vuba_sources.yml`.
+
+Example:
+
+```yaml
+version: 2
+
+sources:
+  - name: vuba_system
+    description: "Source system for Vuba delivery platform"
+    database: VUBA_VUBA_DB
+    schema: VUBA_SCHEMA
+
+    tables:
+      - name: customers
+        identifier: CUSTOMERS
+
+      - name: orders
+        identifier: ORDERS
+
+      - name: shops
+        identifier: SHOPS
+
+      - name: order_items
+        identifier: ORDER_ITEMS
+```
+
+These sources correspond to Snowflake tables:
+
+```
+VUBA_VUBA_DB.VUBA_SCHEMA.CUSTOMERS
+VUBA_VUBA_DB.VUBA_SCHEMA.ORDERS
+VUBA_VUBA_DB.VUBA_SCHEMA.SHOPS
+VUBA_VUBA_DB.VUBA_SCHEMA.ORDER_ITEMS
 ```
 
 ---
 
-## 4. Environment Variables
+# 5. Environment Configuration
 
-All sensitive credentials are stored in a `.env` file and referenced in `profiles.yml`.
+Sensitive credentials are stored in **environment variables** and loaded via `.env`.
 
-**Example `.env`:**
+Example:
 
-```env
-# Snowflake Dev
-SNOWFLAKE_ACCOUNT=<your_account>
-SNOWFLAKE_USER=<your_dev_user>
-SNOWFLAKE_PASSWORD=<your_dev_password>
-SNOWFLAKE_ROLE=<your_dev_role>
-SNOWFLAKE_WAREHOUSE=<your_dev_warehouse>
-SNOWFLAKE_DATABASE=<your_dev_database>
-SNOWFLAKE_SCHEMA=<your_dev_schema>
-
-# Snowflake Test
-DBT_TEST_USER=<your_test_user>
-DBT_TEST_PASSWORD=<your_test_password>
-
-# Snowflake Prod
-DBT_PROD_USER=<your_prod_user>
-DBT_PROD_PASSWORD=<your_prod_password>
-
-# PostgreSQL Source
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-POSTGRES_DB=source_db
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=secret
+```
+SNOWFLAKE_ACCOUNT=xxxx
+SNOWFLAKE_USER=xxxx
+SNOWFLAKE_PASSWORD=xxxx
+SNOWFLAKE_ROLE=TRANSFORMER
+SNOWFLAKE_WAREHOUSE=COMPUTE_WH
+SNOWFLAKE_DATABASE=VUBA_VUBA_DB
+SNOWFLAKE_SCHEMA=VUBA_SCHEMA
 ```
 
-> **Tip:** Add `.env` to `.gitignore` to prevent committing sensitive information.
+These variables are referenced in `~/.dbt/profiles.yml`.
 
 ---
 
-## 5. dbt Profiles Configuration
+# 6. dbt Profiles
 
-Located at `~/.dbt/profiles.yml`. Supports multiple environments:
+The project supports **multiple environments**:
+
+| Environment | Purpose                |
+| ----------- | ---------------------- |
+| dev         | Local development      |
+| test        | CI / validation        |
+| prod        | Production             |
+| reddit      | Experimental pipelines |
+
+Example configuration:
 
 ```yaml
 dbt_core_project:
@@ -107,122 +218,102 @@ dbt_core_project:
       database: "{{ env_var('SNOWFLAKE_DATABASE') }}"
       schema: "{{ env_var('SNOWFLAKE_SCHEMA') }}"
       threads: 4
-
-    test:
-      type: snowflake
-      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
-      user: "{{ env_var('DBT_TEST_USER') }}"
-      password: "{{ env_var('DBT_TEST_PASSWORD') }}"
-      role: "TRANSFORMER"
-      warehouse: "TEST_WH"
-      database: "TEST_DB"
-      schema: "CI_TESTING"
-      threads: 8
-
-    prod:
-      type: snowflake
-      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
-      user: "{{ env_var('DBT_PROD_USER') }}"
-      password: "{{ env_var('DBT_PROD_PASSWORD') }}"
-      role: "TRANSFORMER"
-      warehouse: "PROD_WH"
-      database: "PROD_DB"
-      schema: "ANALYTICS"
-      threads: 16
-
-    reddit:
-      type: snowflake
-      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
-      user: "{{ env_var('SNOWFLAKE_USER') }}"
-      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
-      role: "{{ env_var('SNOWFLAKE_ROLE') }}"
-      warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE') }}"
-      database: "RAW_DATA"
-      schema: "REDDIT_RAW"
-      threads: 1
 ```
 
 ---
 
-## 6. Running dbt
+# 7. Running the Project
 
-### 6.1 Load environment variables
+### Activate the environment
+
+```bash
+source .venv/bin/activate
+```
+
+### Load environment variables
 
 ```bash
 export $(grep -v '^#' .env | xargs)
 ```
 
-### 6.2 Debug connection
+### Verify configuration
 
 ```bash
 dbt debug
 ```
 
-### 6.3 Run transformations
+### Run models
 
 ```bash
 dbt run
 ```
 
-### 6.4 Test data quality
+### Run data tests
 
 ```bash
 dbt test
 ```
 
-### 6.5 Switch environment
+### Generate documentation
 
 ```bash
-dbt run --target prod
+dbt docs generate
+dbt docs serve
 ```
 
 ---
 
-## 7. Data Transformation Workflow
+# 8. Data Quality
 
-1. **Raw Layer** – Load PostgreSQL data into Snowflake
-2. **Staging Layer** – Basic cleaning & standardization
-3. **Intermediate Layer** – Apply business logic
-4. **Mart Layer** – Analytics-ready tables for dashboards & reporting
+dbt tests ensure data reliability.
 
----
+Examples:
 
-## 8. Best Practices
+* **unique** → primary keys
+* **not_null** → required fields
+* **relationships** → foreign keys
 
-* Use **staging models** for raw tables
-* Store credentials in `.env`
-* Apply **data tests** for quality assurance
-* Version control your dbt project with Git
-* Use descriptive, consistent model naming
+Example:
 
----
-
-## 9. Useful dbt Commands
-
-| Command             | Purpose                               |
-| ------------------- | ------------------------------------- |
-| `dbt debug`         | Validate configuration and connection |
-| `dbt run`           | Execute SQL models                    |
-| `dbt test`          | Run data quality tests                |
-| `dbt docs generate` | Generate documentation                |
-| `dbt docs serve`    | View documentation locally            |
+```yaml
+columns:
+  - name: customer_id
+    tests:
+      - unique
+      - not_null
+```
 
 ---
 
-## 10. References
+# 9. Analytics Use Cases
 
-* [dbt Documentation](https://docs.getdbt.com/)
-* [Snowflake Documentation](https://docs.snowflake.com/)
-* [PostgreSQL Documentation](https://www.postgresql.org/docs/)
+This pipeline enables analytics such as:
+
+* Revenue per shop
+* Customer ordering patterns
+* Order volume trends
+* Delivery performance analysis
+* Customer lifetime value
 
 ---
 
-## 11. Author
+# 10. Useful dbt Commands
 
-Eric Maniraguha
-Data Scientist & Data Engineer
+| Command             | Description         |
+| ------------------- | ------------------- |
+| `dbt debug`         | Check configuration |
+| `dbt run`           | Execute models      |
+| `dbt test`          | Run data tests      |
+| `dbt build`         | Run models + tests  |
+| `dbt docs generate` | Generate docs       |
+| `dbt docs serve`    | View docs           |
+
+---
+
+# 11. Author
+
+**Eric Maniraguha**
+Data Scientist • Data Engineer
 Kigali, Rwanda
 
 ---
-
-# dbt_project_snoflake
